@@ -12,6 +12,7 @@ class Hlw < Formula
     ldflags = %W[
       -s -w
       -X github.com/first-it-consulting/hlw/cmd.Version=#{version}
+      -X github.com/first-it-consulting/hlw/cmd.Commit=v#{version}
       -X github.com/first-it-consulting/hlw/cmd.Date=#{time.iso8601}
     ]
     system "go", "build", "-ldflags", ldflags.join(" "), "-o", bin/"hlw", "."
