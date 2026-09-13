@@ -76,6 +76,8 @@ brew install hlw
 The formula lives in this repository's [`Formula/`](Formula) directory.
 Releases are fully automated: when a new version is tagged, the CI updates
 the formula's checksum and pushes it to the same repo.
+Releases are fully automated: when a new version is tagged, the CI updates
+the formula's checksum and pushes it to the same repo.
 
 ## Quick start
 
