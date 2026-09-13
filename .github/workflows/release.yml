@@ -1,0 +1,106 @@
+name: Release
+
+# Runs when a PR lands on main. The version comes from the VERSION file, so a
+# release happens only when that file changes: merges that do not bump it are
+# built and tested, then stop.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  test:
+    name: Format, vet and test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: gofmt
+        run: |
+          unformatted=$(gofmt -l .)
+          if [ -n "$unformatted" ]; then
+            echo "These files are not gofmt'd:"
+            echo "$unformatted"
+            exit 1
+          fi
+
+      - name: go vet
+        run: go vet ./...
+
+      - name: Tests
+        run: go test -race ./...
+
+  release:
+    name: Build and release
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Resolve version
+        id: version
+        run: |
+          version="$(cat VERSION)"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          if git rev-parse "v$version" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "Tag v$version already exists; nothing to release."
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build
+        if: steps.version.outputs.exists == 'false'
+        run: |
+          make dist VERSION="${{ steps.version.outputs.version }}" COMMIT="${{ github.sha }}"
+          ls -lh dist/
+
+      - name: Tag
+        if: steps.version.outputs.exists == 'false'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "v${{ steps.version.outputs.version }}" -m "hlw v${{ steps.version.outputs.version }}"
+          git push origin "v${{ steps.version.outputs.version }}"
+
+      - name: Release
+        if: steps.version.outputs.exists == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "v${{ steps.version.outputs.version }}" \
+            --title "hlw v${{ steps.version.outputs.version }}" \
+            --generate-notes \
+            dist/*
+
+      - name: Homebrew formula checksum
+        if: steps.version.outputs.exists == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # The formula builds from the source tarball, whose checksum only
+          # exists once the tag does.
+          url="https://github.com/${{ github.repository }}/archive/refs/tags/v${{ steps.version.outputs.version }}.tar.gz"
+          sha=$(curl -fsSL "$url" | shasum -a 256 | cut -d' ' -f1)
+          echo "### Homebrew" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Update \`Formula/hlw.rb\`:" >> "$GITHUB_STEP_SUMMARY"
+          echo '```ruby' >> "$GITHUB_STEP_SUMMARY"
+          echo "  url \"$url\"" >> "$GITHUB_STEP_SUMMARY"
+          echo "  sha256 \"$sha\"" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"

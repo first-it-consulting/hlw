@@ -1,0 +1,91 @@
+name: CI
+
+# Pull requests only: pushing a branch on its own does not burn CI minutes,
+# opening the PR is what asks for review.
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Format, vet and test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: gofmt
+        run: |
+          unformatted=$(gofmt -l .)
+          if [ -n "$unformatted" ]; then
+            echo "These files are not gofmt'd:"
+            echo "$unformatted"
+            gofmt -d .
+            exit 1
+          fi
+
+      - name: go vet
+        run: go vet ./...
+
+      - name: go mod tidy is up to date
+        run: |
+          go mod tidy
+          if ! git diff --quiet go.mod go.sum; then
+            echo "go.mod/go.sum are not tidy; run 'go mod tidy'"
+            git diff go.mod go.sum
+            exit 1
+          fi
+
+      - name: Tests
+        run: go test -race ./...
+
+      - name: Example config is valid
+        run: |
+          go build -o hlw .
+          mkdir -p "$RUNNER_TEMP/home/.config/hlw"
+          cp config.example.json "$RUNNER_TEMP/home/.config/hlw/config.json"
+          HOME="$RUNNER_TEMP/home" ./hlw list
+
+  release-candidate:
+    name: Release candidate
+    needs: check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Build release candidate
+        id: rc
+        run: |
+          version="$(cat VERSION)-rc.${{ github.run_number }}"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          make dist VERSION="$version" COMMIT="${{ github.event.pull_request.head.sha }}"
+          ls -lh dist/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hlw-${{ steps.rc.outputs.version }}
+          path: dist/
+          retention-days: 14
+
+      - name: Summary
+        run: |
+          echo "### Release candidate \`${{ steps.rc.outputs.version }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Built from \`${{ github.event.pull_request.head.sha }}\`. Download it from the run artifacts." >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          cat dist/checksums.txt >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"

@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "hlw-config",
+  "title": "Harness Launch Wrapper Config",
+  "description": "Configuration file for hlw CLI tool",
+  "type": "object",
+  "required": [
+    "harnesses"
+  ],
+  "properties": {
+    "harnesses": {
+      "type": "object",
+      "description": "Map of harness configurations",
+      "additionalProperties": {
+        "$ref": "#/$defs/harness"
+      }
+    }
+  },
+  "$defs": {
+    "harness": {
+      "type": "object",
+      "required": [
+        "executable"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "executable": {
+          "type": "string",
+          "description": "Path or name of the executable to run"
+        },
+        "args": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Default command-line arguments to pass to the executable",
+          "default": []
+        },
+        "envVars": {
+          "type": "object",
+          "description": "Environment variables to inject into the subprocess. A value may contain {{endpoint}}, replaced by the harness's endpoint, or {{env:NAME}}, replaced by the value of NAME in the process environment - so a base URL or a secret need not be stored here. An entry whose placeholder cannot be resolved is not set.",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "endpoint": {
+          "type": "string",
+          "format": "uri",
+          "description": "Base URL of an OpenAI-compatible server. The model list is fetched from <endpoint>/v1/models. A trailing /v1 is accepted and not duplicated."
+        },
+        "modelURL": {
+          "type": "string",
+          "format": "uri",
+          "description": "Full URL of the model list, for servers that do not serve it at /v1/models. Overrides endpoint when both are set."
+        },
+        "description": {
+          "type": "string",
+          "description": "Optional description of the harness"
+        },
+        "modelEnvVars": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Environment variables set to the selected model id. Use for agents that take their model through the environment (e.g. Claude Code's ANTHROPIC_DEFAULT_*_MODEL)."
+        },
+        "modelArgs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Arguments appended after args. {{model}} is replaced by the selected model id and {{contextWindow}} by its context window in tokens when the endpoint reports one. An argument whose placeholder has no value is dropped whole, so write flag and value as a single token (--config=key={{contextWindow}})."
+        },
+        "modelAuthToken": {
+          "type": "string",
+          "description": "Bearer token sent when fetching the model list. Supports {{env:NAME}} so the secret can live in the environment rather than this file. Omitted means the request is sent unauthenticated - there is no implicit token lookup."
+        }
+      }
+    }
+  }
+}

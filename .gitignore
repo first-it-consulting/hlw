@@ -1,0 +1,47 @@
+# .gitignore
+
+# Build artifacts
+*.exe
+*.exe.manifest
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+hlw
+hlw-*
+dist/
+
+# Go
+vendor/
+*.test
+*.out
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Config (contains secrets!)
+config.json
+*.secret.json
+
+# Test coverage
+coverage.html
+coverage.out
+*.coverprofile
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+tmp/
+temp/
+*.tmp

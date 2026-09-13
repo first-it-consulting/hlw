@@ -1,0 +1,109 @@
+{
+  "harnesses": {
+    "claude": {
+      "executable": "claude",
+      "description": "Claude Code",
+      "args": [
+        "--permission-mode",
+        "bypassPermissions",
+        "--disallowedTools",
+        "LSP"
+      ],
+      "endpoint": "http://127.0.0.1:4000",
+      "modelAuthToken": "{{env:ANTHROPIC_AUTH_TOKEN}}",
+      "modelEnvVars": [
+        "ANTHROPIC_DEFAULT_OPUS_MODEL",
+        "ANTHROPIC_DEFAULT_SONNET_MODEL",
+        "ANTHROPIC_DEFAULT_HAIKU_MODEL"
+      ],
+      "envVars": {
+        "ANTHROPIC_BASE_URL": "{{endpoint}}",
+        "API_TIMEOUT_MS": "3000000",
+        "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
+        "CLAUDE_CODE_MAX_CONTEXT_TOKENS": "200000",
+        "CLAUDE_CODE_AUTO_COMPACT_WINDOW": "158000",
+        "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "80"
+      }
+    },
+    "codex": {
+      "executable": "codex",
+      "description": "OpenAI Codex",
+      "endpoint": "http://127.0.0.1:4000",
+      "modelAuthToken": "{{env:OMLX_API_KEY}}",
+      "modelArgs": [
+        "-m",
+        "{{model}}",
+        "--config=model_context_window={{contextWindow}}"
+      ]
+    },
+    "opencode": {
+      "executable": "opencode",
+      "description": "OpenCode",
+      "endpoint": "http://127.0.0.1:4000",
+      "modelAuthToken": "{{env:OMLX_API_KEY}}",
+      "modelArgs": [
+        "--model",
+        "omlx/{{model}}"
+      ]
+    },
+    "pi": {
+      "executable": "pi",
+      "description": "Pi",
+      "endpoint": "http://127.0.0.1:4000",
+      "modelAuthToken": "{{env:OMLX_API_KEY}}",
+      "modelArgs": [
+        "--model",
+        "omlx/{{model}}"
+      ]
+    },
+    "claude-ollama": {
+      "executable": "claude",
+      "description": "Claude Code via Ollama",
+      "args": [
+        "--permission-mode",
+        "bypassPermissions"
+      ],
+      "endpoint": "http://127.0.0.1:11434",
+      "modelEnvVars": [
+        "ANTHROPIC_DEFAULT_OPUS_MODEL",
+        "ANTHROPIC_DEFAULT_SONNET_MODEL",
+        "ANTHROPIC_DEFAULT_HAIKU_MODEL"
+      ],
+      "envVars": {
+        "ANTHROPIC_BASE_URL": "{{endpoint}}",
+        "ANTHROPIC_AUTH_TOKEN": "ollama"
+      }
+    },
+    "codex-ollama": {
+      "executable": "codex",
+      "description": "Codex via Ollama",
+      "args": [
+        "-c",
+        "model_provider=ollama"
+      ],
+      "endpoint": "http://127.0.0.1:11434",
+      "modelArgs": [
+        "-m",
+        "{{model}}"
+      ]
+    },
+    "opencode-ollama": {
+      "executable": "opencode",
+      "description": "OpenCode via Ollama",
+      "endpoint": "http://127.0.0.1:11434",
+      "modelArgs": [
+        "--model",
+        "ollama/{{model}}"
+      ]
+    },
+    "pi-ollama": {
+      "executable": "pi",
+      "description": "Pi via Ollama",
+      "endpoint": "http://127.0.0.1:11434",
+      "modelArgs": [
+        "--model",
+        "ollama/{{model}}"
+      ]
+    }
+  }
+}
