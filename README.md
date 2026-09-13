@@ -700,9 +700,11 @@ release job uses that version's entry as the GitHub release notes, and falls
 back to generated notes only when the section is missing. After a release the
 job renders `Formula/hlw.rb.template` with the new tag and checksum and pushes
 it to the [tap repository](https://github.com/first-it-consulting/homebrew-tap).
-That requires a `TAP_TOKEN` secret with `contents: write` on the tap; without
-it the release still succeeds and the job summary prints the formula to copy
-across by hand.
+That uses a `TAP_DEPLOY_KEY` secret holding the private half of a write-enabled
+[deploy key](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/managing-deploy-keys)
+on the tap — deliberately not a personal access token, since a deploy key can
+reach that one repository and nothing else. Without the secret the release
+still succeeds and the job summary prints the formula to copy across by hand.
 
 ### Project structure
 
