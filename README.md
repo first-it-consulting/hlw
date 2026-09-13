@@ -77,8 +77,10 @@ Homebrew resolves a tap name by prepending `homebrew-`, so `first-it-consulting/
 means the [`first-it-consulting/homebrew-tap`](https://github.com/first-it-consulting/homebrew-tap)
 repository. That is where the formula Homebrew installs is served from — this
 repo cannot double as its own tap, because the name would have to be
-`homebrew-hlw`. A copy of the formula is kept in [`Formula/`](Formula) here as
-the source of truth; the tap's copy is updated from it when a release goes out.
+`homebrew-hlw`. The formula is generated from
+[`Formula/hlw.rb.template`](Formula/hlw.rb.template) here and pushed to the tap
+on release, so no version or checksum is ever committed to this repo and the
+two cannot drift apart.
 
 ## Quick start
 
@@ -696,9 +698,11 @@ publishes.
 Add the matching section to [`CHANGELOG.md`](CHANGELOG.md) in the same PR: the
 release job uses that version's entry as the GitHub release notes, and falls
 back to generated notes only when the section is missing. After a release the
-job rewrites `Formula/hlw.rb` to the new tag and checksum and mirrors it into
-the [tap repository](https://github.com/first-it-consulting/homebrew-tap),
-which requires a `TAP_TOKEN` secret with `contents: write` there.
+job renders `Formula/hlw.rb.template` with the new tag and checksum and pushes
+it to the [tap repository](https://github.com/first-it-consulting/homebrew-tap).
+That requires a `TAP_TOKEN` secret with `contents: write` on the tap; without
+it the release still succeeds and the job summary prints the formula to copy
+across by hand.
 
 ### Project structure
 
@@ -715,7 +719,7 @@ hlw/
 │       ├── models.go   # Model list fetching
 │       ├── select.go   # Selection entry point + non-TTY fallback
 │       └── picker.go   # Interactive scrolling picker
-├── Formula/            # Homebrew formula (mirrored to the tap on release)
+├── Formula/            # Homebrew formula template, rendered to the tap
 ├── CHANGELOG.md        # Release notes, per version
 ├── config.example.json # Example configuration
 ├── config.schema.json  # JSON schema for config validation

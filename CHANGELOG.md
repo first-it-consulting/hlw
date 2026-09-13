@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- The release job tried to commit the updated formula back to `main`, which a
+  repository rule rejects — `main` only accepts pull requests. The formula is
+  now generated from `Formula/hlw.rb.template` and pushed only to the tap, so
+  nothing version-specific is committed to this repository at all and the
+  in-repo copy can no longer drift behind the released tag.
+
 ## [0.1.1] - 2026-09-13
 
 First patch on the public release. No behaviour changes to the tool itself —
