@@ -693,6 +693,13 @@ The version lives in [`VERSION`](VERSION). The release job is idempotent: if
 release. **To release, bump `VERSION` in the PR** — merging it then tags and
 publishes.
 
+Add the matching section to [`CHANGELOG.md`](CHANGELOG.md) in the same PR: the
+release job uses that version's entry as the GitHub release notes, and falls
+back to generated notes only when the section is missing. After a release the
+job rewrites `Formula/hlw.rb` to the new tag and checksum and mirrors it into
+the [tap repository](https://github.com/first-it-consulting/homebrew-tap),
+which requires a `TAP_TOKEN` secret with `contents: write` there.
+
 ### Project structure
 
 ```
@@ -708,7 +715,8 @@ hlw/
 │       ├── models.go   # Model list fetching
 │       ├── select.go   # Selection entry point + non-TTY fallback
 │       └── picker.go   # Interactive scrolling picker
-├── Formula/            # Homebrew formula
+├── Formula/            # Homebrew formula (mirrored to the tap on release)
+├── CHANGELOG.md        # Release notes, per version
 ├── config.example.json # Example configuration
 ├── config.schema.json  # JSON schema for config validation
 └── main.go             # Entry point
