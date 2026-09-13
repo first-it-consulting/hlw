@@ -3,9 +3,7 @@ class Hlw < Formula
   homepage "https://github.com/first-it-consulting/hlw"
   url "https://github.com/first-it-consulting/hlw/archive/refs/tags/v0.1.0.tar.gz"
   version "0.1.0"
-  # Filled in from the release workflow's job summary after the tag exists:
-  #   curl -fsSL <url> | shasum -a 256
-  sha256 "0000000000000000000000000000000000000000000000000000000000000000"
+  sha256 "21b669e74567822c13b8b554be62358b51eab79ba2ddf3c8f4a354199c8a2c8d"
   license "MIT"
 
   depends_on "go" => :build
