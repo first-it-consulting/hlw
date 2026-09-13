@@ -8,6 +8,8 @@ letting you pick the model at launch time.
 hlw launch claude
 ```
 
+![hlw picking a model and launching Claude Code](demo/hlw.gif)
+
 One config file describes each agent: what to execute, which environment
 variables it needs, where to fetch its model list, and how that agent expects to
 be told which model to use. `hlw` fetches the list, shows a picker, and execs the

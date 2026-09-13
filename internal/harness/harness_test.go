@@ -34,26 +34,37 @@ func TestLaunch_InvalidCommand(t *testing.T) {
 	}
 }
 
-func TestMaskValue_LongValue(t *testing.T) {
-	value := "sk-ant-api03-abcdefghijklmnopqrstuvwxyz123456"
-	masked := MaskValue(value)
-
-	if masked == value {
-		t.Error("Expected value to be masked")
+func TestMaskValue(t *testing.T) {
+	// Enough of the tail to tell two credentials apart, and nothing more.
+	if got := MaskValue("sk-ant-api03-abcdefghijklmnopqrstuvwxyz123456"); got != "********3456" {
+		t.Errorf("MaskValue() = %q, want ********3456", got)
 	}
-
-	// Should show first 2 and last 2 chars with **** in between
-	expected := "sk****56"
-	if masked != expected {
-		t.Errorf("Expected '%s', got: %s", expected, masked)
+	// Short values reveal nothing: the length is itself a hint.
+	if got := MaskValue("abc"); got != "********" {
+		t.Errorf("MaskValue() = %q, want ********", got)
+	}
+	if got := MaskValue("12345678"); got != "********" {
+		t.Errorf("MaskValue() = %q, want ******** for a short value", got)
 	}
 }
 
-func TestMaskValue_ShortValue(t *testing.T) {
-	value := "abc"
-	masked := MaskValue(value)
-
-	if masked != "****" {
-		t.Errorf("Expected '****' for short value, got: %s", masked)
+// Only credentials are hidden. Masking a base URL or a model id makes the
+// launch banner unreadable without protecting anything.
+func TestDisplayValue(t *testing.T) {
+	cases := []struct{ name, value, want string }{
+		{"ANTHROPIC_AUTH_TOKEN", "sk-secret-value-1234", "********1234"},
+		{"OMLX_API_KEY", "sk-secret-value-1234", "********1234"},
+		{"MY_PASSWORD", "hunter2hunter2", "********ter2"},
+		{"AWS_SECRET_ACCESS_KEY", "abcdefghijklmnop", "********mnop"},
+		{"ANTHROPIC_BASE_URL", "http://127.0.0.1:4000", "http://127.0.0.1:4000"},
+		{"ANTHROPIC_DEFAULT_SONNET_MODEL", "qwen3-coder-30b", "qwen3-coder-30b"},
+		{"API_TIMEOUT_MS", "3000000", "3000000"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := DisplayValue(tc.name, tc.value); got != tc.want {
+				t.Errorf("DisplayValue(%q) = %q, want %q", tc.name, got, tc.want)
+			}
+		})
 	}
 }
