@@ -68,12 +68,14 @@ install -m 755 hlw /usr/local/bin/hlw
 
 ### Homebrew
 
-A formula lives in [`Formula/hlw.rb`](Formula/hlw.rb). No tap is published yet,
-so install it directly from the repo:
-
 ```bash
-brew install --formula ./Formula/hlw.rb
+brew tap first-it-consulting/hlw
+brew install hlw
 ```
+
+The formula lives in this repository's [`Formula/`](Formula) directory.
+Releases are fully automated: when a new version is tagged, the CI updates
+the formula's checksum and pushes it to the same repo.
 
 ## Quick start
 
