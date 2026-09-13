@@ -68,8 +68,16 @@ install -m 755 hlw /usr/local/bin/hlw
 
 ### Homebrew
 
+Install directly from this repository:
+
 ```bash
-brew tap first-it-consulting/tap
+brew install first-it-consulting/hlw/hlw
+```
+
+Or tap the repository for easier updates:
+
+```bash
+brew tap first-it-consulting/hlw
 brew install hlw
 ```
 
