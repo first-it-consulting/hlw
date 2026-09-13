@@ -109,7 +109,7 @@ Example:
 			// Show what the agent actually receives, not the raw config value.
 			resolved := h.ResolvedEnvVars()
 			for _, k := range h.SortedEnvVars() {
-				fmt.Printf("  %s=%s\n", k, harness.MaskValue(resolved[k]))
+				fmt.Printf("  %s=%s\n", k, harness.DisplayValue(k, resolved[k]))
 			}
 			fmt.Println()
 		}

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"regexp"
 )
 
 // LaunchResult contains information about the launched process.
@@ -36,10 +37,31 @@ func Launch(command string, args []string, env []string) (*LaunchResult, error) 
 	return &LaunchResult{ExitCode: 0}, nil
 }
 
-// MaskValue hides sensitive parts of a value for display.
+// secretName matches environment variable names that hold credentials. Only
+// those are masked: hiding a base URL or a model id makes the launch banner
+// harder to read without protecting anything.
+var secretName = regexp.MustCompile(`(?i)(TOKEN|KEY|SECRET|PASSWORD|PASSWD|CREDENTIAL)`)
+
+// IsSecret reports whether a variable of this name should have its value
+// hidden when printed.
+func IsSecret(name string) bool {
+	return secretName.MatchString(name)
+}
+
+// MaskValue hides a secret value for display, keeping just enough to tell two
+// credentials apart.
 func MaskValue(value string) string {
-	if len(value) <= 4 {
-		return "****"
+	if len(value) <= 8 {
+		return "********"
 	}
-	return value[:2] + "****" + value[len(value)-2:]
+	return "********" + value[len(value)-4:]
+}
+
+// DisplayValue returns the value to print for a variable: masked when the name
+// says it is a credential, shown in full otherwise.
+func DisplayValue(name, value string) string {
+	if IsSecret(name) {
+		return MaskValue(value)
+	}
+	return value
 }

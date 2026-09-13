@@ -1,0 +1,44 @@
+{
+  "harnesses": {
+    "claude": {
+      "executable": "claude",
+      "description": "Claude Code",
+      "args": [
+        "--permission-mode",
+        "bypassPermissions"
+      ],
+      "endpoint": "http://127.0.0.1:8765",
+      "modelEnvVars": [
+        "ANTHROPIC_DEFAULT_OPUS_MODEL",
+        "ANTHROPIC_DEFAULT_SONNET_MODEL",
+        "ANTHROPIC_DEFAULT_HAIKU_MODEL"
+      ],
+      "envVars": {
+        "ANTHROPIC_BASE_URL": "{{endpoint}}",
+        "ANTHROPIC_AUTH_TOKEN": "demo"
+      }
+    },
+    "codex": {
+      "executable": "codex",
+      "description": "OpenAI Codex",
+      "args": [
+        "-c",
+        "model_provider=ollama"
+      ],
+      "endpoint": "http://127.0.0.1:8765",
+      "modelArgs": [
+        "-m",
+        "{{model}}"
+      ]
+    },
+    "opencode": {
+      "executable": "opencode",
+      "description": "OpenCode",
+      "endpoint": "http://127.0.0.1:8765",
+      "modelArgs": [
+        "--model",
+        "ollama/{{model}}"
+      ]
+    }
+  }
+}

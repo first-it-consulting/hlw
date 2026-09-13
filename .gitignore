@@ -30,6 +30,8 @@ Thumbs.db
 
 # Config (contains secrets!)
 config.json
+# ...except the demo's, which has none and is needed to rebuild demo/hlw.gif
+!demo/config.json
 *.secret.json
 
 # Test coverage
