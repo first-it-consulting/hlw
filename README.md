@@ -69,9 +69,11 @@ install -m 755 hlw /usr/local/bin/hlw
 ### Homebrew
 
 ```bash
-brew tap first-it-consulting/tap
+brew tap first-it-consulting/hlw
 brew install hlw
 ```
+
+The formula lives in this repository's [`Formula/`](Formula) directory.
 
 ## Quick start
 
