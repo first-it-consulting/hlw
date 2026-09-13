@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
+	"time"
 
 	"github.com/first-it-consulting/hlw/internal/config"
 	"github.com/first-it-consulting/hlw/internal/harness"
@@ -68,17 +70,22 @@ Example:
 				}
 				fmt.Println("Continuing without model selection...")
 			} else {
-				// Let user select a model
-				model, err := models.SelectModel(modelList.Models)
-				if errors.Is(err, models.ErrSelectionCanceled) {
-					fmt.Println("Canceled.")
-					os.Exit(130)
+				model, rest, fromArg := takeModelArg(modelList.Models, userArgs)
+				userArgs = rest
+				if fromArg {
+					fmt.Printf("Model from argument: %s\n\n", model.ID)
 				}
-				if err != nil {
-					return fmt.Errorf("failed to select model: %w", err)
+				if !fromArg {
+					model, err = models.SelectModel(modelList.Models)
+					if errors.Is(err, models.ErrSelectionCanceled) {
+						fmt.Println("Canceled.")
+						os.Exit(130)
+					}
+					if err != nil {
+						return fmt.Errorf("failed to select model: %w", err)
+					}
+					fmt.Printf("Selected model: %s\n\n", model.ID)
 				}
-
-				fmt.Printf("Selected model: %s\n\n", model.ID)
 
 				// Harnesses that take their model through the environment.
 				h.ApplyModel(model.ID)
@@ -130,10 +137,98 @@ Example:
 	},
 }
 
+// completeHarnesses offers the configured harness names, annotated with their
+// descriptions, for the first argument of "hlw launch".
+func completeHarnesses(toComplete string) ([]string, cobra.ShellCompDirective) {
+	cfg, err := config.LoadConfig()
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveError
+	}
+	var out []string
+	for _, name := range cfg.ListHarnesses() {
+		if !strings.HasPrefix(name, toComplete) {
+			continue
+		}
+		h, err := cfg.GetHarness(name)
+		if err != nil || h.Description == "" {
+			out = append(out, name)
+			continue
+		}
+		// Shells that support it show the text after the tab as a hint.
+		out = append(out, name+"\t"+h.Description)
+	}
+	return out, cobra.ShellCompDirectiveNoFileComp
+}
+
+// takeModelArg consumes the first argument after the harness name when it
+// names one of the endpoint's models, so "hlw launch claude <model>" skips the
+// picker. Anything else — an agent flag, or a subcommand like "opencode run" —
+// is left in place and passed through untouched.
+func takeModelArg(available []models.Model, userArgs []string) (models.Model, []string, bool) {
+	if len(userArgs) == 0 || strings.HasPrefix(userArgs[0], "-") {
+		return models.Model{}, userArgs, false
+	}
+	m, ok := models.Find(available, userArgs[0])
+	if !ok {
+		return models.Model{}, userArgs, false
+	}
+	return m, userArgs[1:], true
+}
+
+// completionFetchTimeout keeps a slow or unreachable endpoint from stalling the
+// shell prompt: completion gives up quickly and offers nothing.
+const completionFetchTimeout = 2 * time.Second
+
+// completeModels offers the model ids the harness's endpoint serves.
+func completeModels(harnessName, toComplete string) ([]string, cobra.ShellCompDirective) {
+	cfg, err := config.LoadConfig()
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveError
+	}
+	h, err := cfg.GetHarness(harnessName)
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveNoFileComp
+	}
+	url := h.ModelListURL()
+	if url == "" {
+		return nil, cobra.ShellCompDirectiveNoFileComp
+	}
+	headers := map[string]string{}
+	if token := h.ResolvedModelAuthToken(); token != "" {
+		headers["Authorization"] = "Bearer " + token
+	}
+	list, err := models.FetchModelsTimeout(url, headers, completionFetchTimeout)
+	if err != nil {
+		// Nothing to offer, but do not fall back to filenames: a filename is
+		// never a model.
+		return nil, cobra.ShellCompDirectiveNoFileComp
+	}
+	var out []string
+	for _, m := range list.Models {
+		if strings.HasPrefix(m.ID, toComplete) {
+			out = append(out, m.ID)
+		}
+	}
+	return out, cobra.ShellCompDirectiveNoFileComp
+}
+
 func init() {
 	// Stop parsing flags once the harness name is seen, so everything after it
 	// is passed through to the agent rather than being claimed by hlw. Without
 	// this, "hlw launch claude --resume x" fails with "unknown flag: --resume".
 	launchCmd.Flags().SetInterspersed(false)
+
+	launchCmd.ValidArgsFunction = func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		if len(args) == 0 {
+			return completeHarnesses(toComplete)
+		}
+		if len(args) == 1 {
+			return completeModels(args[0], toComplete)
+		}
+		// Further arguments belong to the agent, so hlw has nothing useful to
+		// offer and should not suggest files either.
+		return nil, cobra.ShellCompDirectiveNoFileComp
+	}
+
 	rootCmd.AddCommand(launchCmd)
 }

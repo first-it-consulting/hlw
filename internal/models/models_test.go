@@ -67,3 +67,16 @@ func TestFetchModels_InvalidJSON(t *testing.T) {
 		t.Fatal("Expected error for invalid JSON")
 	}
 }
+
+func TestFind(t *testing.T) {
+	list := []Model{{ID: "a", MaxModelLen: 100}, {ID: "b"}}
+	if m, ok := Find(list, "a"); !ok || m.ContextWindow() != 100 {
+		t.Errorf("Find(a) = %+v, %v; want the full model", m, ok)
+	}
+	if _, ok := Find(list, "missing"); ok {
+		t.Error("Find should not match an unknown id")
+	}
+	if _, ok := Find(nil, "a"); ok {
+		t.Error("Find on an empty list should not match")
+	}
+}
