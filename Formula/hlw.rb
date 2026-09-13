@@ -3,7 +3,7 @@ class Hlw < Formula
   homepage "https://github.com/first-it-consulting/hlw"
   url "https://github.com/first-it-consulting/hlw/archive/refs/tags/v0.1.0.tar.gz"
   version "0.1.0"
-  sha256 "21b669e74567822c13b8b554be62358b51eab79ba2ddf3c8f4a354199c8a2c8d"
+  sha256 "a8e3923f0c303bd931f2e98c1d60119a33c62cd284baccecdaa00684fd07dbc1"
   license "MIT"
 
   depends_on "go" => :build
