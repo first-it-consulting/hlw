@@ -69,13 +69,16 @@ install -m 755 hlw /usr/local/bin/hlw
 ### Homebrew
 
 ```bash
-brew tap first-it-consulting/hlw
-brew install hlw
+brew tap first-it-consulting/tap
+brew install first-it-consulting/tap/hlw
 ```
 
-The formula lives in this repository's [`Formula/`](Formula) directory.
-Releases are fully automated: when a new version is tagged, the CI updates
-the formula's checksum and pushes it to the same repo.
+Homebrew resolves a tap name by prepending `homebrew-`, so `first-it-consulting/tap`
+means the [`first-it-consulting/homebrew-tap`](https://github.com/first-it-consulting/homebrew-tap)
+repository. That is where the formula Homebrew installs is served from — this
+repo cannot double as its own tap, because the name would have to be
+`homebrew-hlw`. A copy of the formula is kept in [`Formula/`](Formula) here as
+the source of truth; the tap's copy is updated from it when a release goes out.
 
 ## Quick start
 
