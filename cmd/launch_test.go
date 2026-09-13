@@ -5,6 +5,7 @@ import (
 	"slices"
 	"testing"
 
+	"github.com/first-it-consulting/hlw/internal/models"
 	"github.com/spf13/pflag"
 )
 
@@ -49,5 +50,44 @@ func TestLaunchOwnFlagsStillParseBeforeHarnessName(t *testing.T) {
 	}
 	if got := flags.Args(); len(got) != 0 {
 		t.Errorf("expected --help to be consumed as a flag, got positional args %v", got)
+	}
+}
+
+func TestTakeModelArg(t *testing.T) {
+	available := []models.Model{
+		{ID: "qwen3-coder-30b"},
+		{ID: "deepseek-v3.2"},
+	}
+	cases := []struct {
+		name     string
+		in       []string
+		wantID   string
+		wantRest []string
+		wantTook bool
+	}{
+		{"matching model is consumed", []string{"deepseek-v3.2"}, "deepseek-v3.2", []string{}, true},
+		{"model then agent flags", []string{"qwen3-coder-30b", "--resume", "x"}, "qwen3-coder-30b", []string{"--resume", "x"}, true},
+		// "run" is a real opencode subcommand, not a model.
+		{"agent subcommand passes through", []string{"run", "fix the bug"}, "", []string{"run", "fix the bug"}, false},
+		{"unknown word passes through", []string{"notamodel"}, "", []string{"notamodel"}, false},
+		{"flag is never a model", []string{"--resume", "xxx"}, "", []string{"--resume", "xxx"}, false},
+		{"no args", nil, "", nil, false},
+		// A model id could start with a dash only by accident; refusing to
+		// treat flags as models is the safer rule.
+		{"dash-prefixed is left alone", []string{"-m"}, "", []string{"-m"}, false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got, rest, took := takeModelArg(available, tc.in)
+			if took != tc.wantTook {
+				t.Fatalf("took = %v, want %v", took, tc.wantTook)
+			}
+			if got.ID != tc.wantID {
+				t.Errorf("model = %q, want %q", got.ID, tc.wantID)
+			}
+			if !slices.Equal(rest, tc.wantRest) {
+				t.Errorf("rest = %v, want %v", rest, tc.wantRest)
+			}
+		})
 	}
 }

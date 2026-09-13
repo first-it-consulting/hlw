@@ -524,7 +524,7 @@ hlw launch claude
 
 1. Load the harness configuration
 2. Fetch the model list from `endpoint` (or `modelURL`), if one is configured
-3. Show a scrolling picker so you can choose one
+3. Show a scrolling picker so you can choose one, unless you named a model
 4. Exec the agent with `args` + `modelArgs` + your own arguments, and the
    configured environment
 
@@ -533,6 +533,57 @@ Extra arguments are appended after the harness's own `args`:
 ```bash
 hlw launch claude --resume xxxx
 ```
+
+### Naming the model instead of picking it
+
+Passing a model id skips the picker:
+
+```bash
+hlw launch claude deepseek-v3.2
+hlw launch claude deepseek-v3.2 --resume xxxx
+```
+
+Only an argument that matches a model the endpoint actually serves is treated
+this way. Anything else is passed through to the agent untouched, so agent
+subcommands and flags keep working:
+
+```bash
+hlw launch opencode run "fix the bug"   # "run" is an opencode subcommand
+hlw launch claude --resume xxxx         # flags are never read as models
+```
+
+### Shell completion
+
+`hlw` completes harness names and, once a harness is named, the models its
+endpoint serves:
+
+```
+$ hlw launch <TAB>
+claude          -- Claude Code
+claude-ollama   -- Claude Code via Ollama
+codex           -- OpenAI Codex
+
+$ hlw launch claude <TAB>
+qwen3-coder-30b   deepseek-v3.2   llama3.3-70b   devstral-small
+```
+
+Model completion queries the endpoint, with a two-second timeout so an
+unreachable server offers nothing rather than stalling the prompt.
+
+Install it for your shell:
+
+```bash
+# zsh — with a directory already on $fpath
+hlw completion zsh > "${fpath[1]}/_hlw"
+
+# bash
+hlw completion bash > /usr/local/etc/bash_completion.d/hlw
+
+# fish
+hlw completion fish > ~/.config/fish/completions/hlw.fish
+```
+
+`hlw completion --help` covers the details for each shell.
 
 ### The model picker
 

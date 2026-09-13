@@ -21,6 +21,16 @@ type Model struct {
 	ContextLength int `json:"context_length,omitempty"`
 }
 
+// Find returns the model with the given id.
+func Find(models []Model, id string) (Model, bool) {
+	for _, m := range models {
+		if m.ID == id {
+			return m, true
+		}
+	}
+	return Model{}, false
+}
+
 // ContextWindow returns the model's context window in tokens, or 0 when the
 // endpoint does not report one.
 func (m Model) ContextWindow() int {
@@ -46,10 +56,19 @@ type OllamaModel struct {
 	Model string `json:"model"`
 }
 
+// DefaultFetchTimeout is how long a launch waits for the model list.
+const DefaultFetchTimeout = 10 * time.Second
+
 // FetchModels retrieves the list of available models from the given URL.
 func FetchModels(url string, headers map[string]string) (*ModelList, error) {
+	return FetchModelsTimeout(url, headers, DefaultFetchTimeout)
+}
+
+// FetchModelsTimeout is FetchModels with an explicit timeout, for callers like
+// shell completion that must give up quickly rather than stall the prompt.
+func FetchModelsTimeout(url string, headers map[string]string, timeout time.Duration) (*ModelList, error) {
 	client := &http.Client{
-		Timeout: 10 * time.Second,
+		Timeout: timeout,
 	}
 
 	req, err := http.NewRequest("GET", url, nil)
