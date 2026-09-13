@@ -1,9 +1,9 @@
 class Hlw < Formula
   desc "Launch AI coding agents against configurable endpoints, picking the model at launch"
   homepage "https://github.com/first-it-consulting/hlw"
-  url "https://github.com/first-it-consulting/hlw/archive/refs/tags/v0.1.0.tar.gz"
-  version "0.1.0"
-  sha256 "a8e3923f0c303bd931f2e98c1d60119a33c62cd284baccecdaa00684fd07dbc1"
+  url "@URL@"
+  version "@VERSION@"
+  sha256 "@SHA256@"
   license "MIT"
 
   depends_on "go" => :build

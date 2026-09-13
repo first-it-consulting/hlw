@@ -112,10 +112,9 @@ jobs:
             $notes \
             dist/*
 
-      - name: Update Homebrew formula
+      - name: Update Homebrew tap
         if: steps.version.outputs.exists == 'false'
         env:
-          GH_TOKEN: ${{ github.token }}
           TAP_TOKEN: ${{ secrets.TAP_TOKEN }}
           VERSION: ${{ steps.version.outputs.version }}
           TAP_REPO: first-it-consulting/homebrew-tap
@@ -123,8 +122,9 @@ jobs:
           set -euo pipefail
 
           # The formula builds from the source tarball, whose checksum only
-          # exists once the tag does. GitHub can take a moment to generate it.
+          # exists once the tag does. GitHub takes a moment to generate it.
           url="https://github.com/${{ github.repository }}/archive/refs/tags/v${VERSION}.tar.gz"
+          sha=""
           for attempt in 1 2 3 4 5; do
             if sha=$(curl -fsSL "$url" | shasum -a 256 | cut -d' ' -f1) && [ -n "$sha" ]; then
               break
@@ -132,54 +132,46 @@ jobs:
             echo "Tarball not ready yet (attempt $attempt); retrying..."
             sleep 5
           done
-          if [ -z "${sha:-}" ]; then
+          if [ -z "$sha" ]; then
             echo "::error::Could not checksum $url"
             exit 1
           fi
-          echo "v${VERSION} -> ${sha}"
 
-          # Rewrite in place. Note: no "sed -i ''" here — that is BSD syntax,
-          # and on the GNU sed this runner ships it swallows the expression as
-          # a filename. Writing to a temp file is portable to both.
-          rewrite() {
-            sed -e "s|^  url \".*\"|  url \"${url}\"|" \
-                -e "s|^  version \".*\"|  version \"${VERSION}\"|" \
-                -e "s|^  sha256 \".*\"|  sha256 \"${sha}\"|" \
-                "$1" > "$1.tmp"
-            mv -f "$1.tmp" "$1"
-          }
+          # Formula/hlw.rb.template is the single source of truth. Nothing
+          # version-specific is committed to this repo, so the formula here can
+          # never drift behind the tag, and nothing needs pushing to a
+          # protected branch.
+          sed -e "s|@URL@|${url}|" \
+              -e "s|@VERSION@|${VERSION}|" \
+              -e "s|@SHA256@|${sha}|" \
+              Formula/hlw.rb.template > hlw.rb
 
-          rewrite Formula/hlw.rb
-          grep -E '^  (url|version|sha256) ' Formula/hlw.rb
-
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add Formula/hlw.rb
-          if git diff --cached --quiet; then
-            echo "Formula already current."
-          else
-            git commit -m "Bump hlw formula to ${VERSION}"
-            # The checkout is detached on a push event, so name the branch.
-            git push origin "HEAD:${{ github.ref_name }}"
+          if grep -q '@[A-Z0-9_]*@' hlw.rb; then
+            echo "::error::Unsubstituted placeholder left in the rendered formula:"
+            grep -n '@[A-Z0-9_]*@' hlw.rb
+            exit 1
           fi
+          grep -E '^  (url|version|sha256) ' hlw.rb
 
-          # Homebrew installs from the tap repo, not from this one: a tap's
-          # name must start with "homebrew-", so this repo cannot serve as its
-          # own tap. Mirror the formula across when a token is available.
+          # Homebrew installs from the tap repo, not this one: a tap's name
+          # must start with "homebrew-", so this repo cannot serve as its own.
           if [ -z "${TAP_TOKEN:-}" ]; then
             {
               echo "### Homebrew tap not updated"
               echo ""
               echo "No \`TAP_TOKEN\` secret is set, so \`${TAP_REPO}\` still serves the"
-              echo "previous version. Copy \`Formula/hlw.rb\` across by hand, or add a"
-              echo "token with \`contents: write\` on that repo."
+              echo "previous version. Commit this to its \`Formula/hlw.rb\`:"
+              echo ""
+              echo '```ruby'
+              cat hlw.rb
+              echo '```'
             } >> "$GITHUB_STEP_SUMMARY"
             echo "::warning::TAP_TOKEN not set; ${TAP_REPO} was left untouched."
             exit 0
           fi
 
           git clone --depth 1 "https://x-access-token:${TAP_TOKEN}@github.com/${TAP_REPO}.git" tap
-          cp Formula/hlw.rb tap/Formula/hlw.rb
+          cp hlw.rb tap/Formula/hlw.rb
           cd tap
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -189,5 +181,5 @@ jobs:
           else
             git commit -m "hlw ${VERSION}"
             git push
-            echo "Pushed hlw ${VERSION} to ${TAP_REPO}." >> "$GITHUB_STEP_SUMMARY"
+            echo "Pushed hlw ${VERSION} to \`${TAP_REPO}\`." >> "$GITHUB_STEP_SUMMARY"
           fi
