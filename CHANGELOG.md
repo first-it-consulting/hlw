@@ -9,11 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- The Homebrew instructions omitted `brew trust`. Since Homebrew 6.0.0,
-  formulae from non-official taps are refused until the user trusts them, so
-  `brew tap` failed with `Refusing to load formula ... from untrusted tap` on a
-  machine that had not already trusted it. Trust is per-machine and client-side,
-  so it cannot be granted from the tap end — it has to be documented.
+- The Homebrew instructions told you to run `brew tap` first, which fails on
+  any machine that has not trusted the tap: since Homebrew 6.0.0, tapping a
+  non-official tap requires trust for the whole tap, and the failure reads like
+  a broken formula (`Refusing to load formula ... from untrusted tap`, once per
+  platform, then `invalid syntax in tap!`). The step was never needed — a fully
+  qualified `brew install first-it-consulting/tap/hlw` taps automatically and
+  is itself treated as consent to load that one formula. Installing is now a
+  single command that needs no trust step and grants less than trusting the
+  whole tap would.
 
 ## [0.1.2] - 2026-09-13
 
