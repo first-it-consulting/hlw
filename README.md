@@ -69,9 +69,20 @@ install -m 755 hlw /usr/local/bin/hlw
 ### Homebrew
 
 ```bash
-brew tap first-it-consulting/tap
+brew trust first-it-consulting/tap
 brew install first-it-consulting/tap/hlw
 ```
+
+The `brew trust` line is required. Since Homebrew 6.0.0, formulae from
+non-official taps are refused until you trust them, and `brew tap` on its own
+fails with `Refusing to load formula ... from untrusted tap` — repeated once per
+platform, then `Cannot tap ...: invalid syntax in tap!` — and leaves the tap
+uninstalled. Trust is per-machine and cannot be granted by the tap, so this is
+needed on every machine, and it is worth understanding rather than pasting:
+trusting a tap means its code may run with your user's privileges whenever
+Homebrew loads it. See [Tap Trust](https://docs.brew.sh/Tap-Trust).
+
+`brew install` taps automatically, so no separate `brew tap` is needed.
 
 Homebrew resolves a tap name by prepending `homebrew-`, so `first-it-consulting/tap`
 means the [`first-it-consulting/homebrew-tap`](https://github.com/first-it-consulting/homebrew-tap)

@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- The Homebrew instructions omitted `brew trust`. Since Homebrew 6.0.0,
+  formulae from non-official taps are refused until the user trusts them, so
+  `brew tap` failed with `Refusing to load formula ... from untrusted tap` on a
+  machine that had not already trusted it. Trust is per-machine and client-side,
+  so it cannot be granted from the tap end — it has to be documented.
+
 ## [0.1.2] - 2026-09-13
 
 Release-pipeline only; `hlw` itself is unchanged from 0.1.1. Cut so the
