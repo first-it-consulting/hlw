@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.3] - 2026-09-14
+
+Documentation only; `hlw` itself is unchanged from 0.1.2.
+
 ### Fixed
 
 - The Homebrew instructions told you to run `brew tap` first, which fails on
@@ -107,7 +111,8 @@ Initial public release.
 - Pass-through of user arguments and flags to the underlying agent.
 - A JSON schema for the configuration file, and a validated example config.
 
-[Unreleased]: https://github.com/first-it-consulting/hlw/compare/v0.1.2...HEAD
+[Unreleased]: https://github.com/first-it-consulting/hlw/compare/v0.1.3...HEAD
+[0.1.3]: https://github.com/first-it-consulting/hlw/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/first-it-consulting/hlw/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/first-it-consulting/hlw/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/first-it-consulting/hlw/releases/tag/v0.1.0
