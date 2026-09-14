@@ -69,20 +69,23 @@ install -m 755 hlw /usr/local/bin/hlw
 ### Homebrew
 
 ```bash
-brew trust first-it-consulting/tap
 brew install first-it-consulting/tap/hlw
 ```
 
-The `brew trust` line is required. Since Homebrew 6.0.0, formulae from
-non-official taps are refused until you trust them, and `brew tap` on its own
-fails with `Refusing to load formula ... from untrusted tap` — repeated once per
-platform, then `Cannot tap ...: invalid syntax in tap!` — and leaves the tap
-uninstalled. Trust is per-machine and cannot be granted by the tap, so this is
-needed on every machine, and it is worth understanding rather than pasting:
-trusting a tap means its code may run with your user's privileges whenever
-Homebrew loads it. See [Tap Trust](https://docs.brew.sh/Tap-Trust).
+That is the whole thing — no `brew tap` step. Naming the formula in full taps
+the repository automatically, and Homebrew treats the fully qualified name as
+your consent to load that one formula, recording it as trusted.
 
-`brew install` taps automatically, so no separate `brew tap` is needed.
+**Do not run `brew tap first-it-consulting/tap` first.** Since Homebrew 6.0.0,
+tapping a non-official tap means "load everything this tap ships", which needs
+trust for the whole tap up front. Without it you get `Refusing to load formula
+... from untrusted tap` once per supported platform, then `Cannot tap ...:
+invalid syntax in tap!`, and the tap is left uninstalled — which reads like a
+broken formula but is a policy gate. If you do want the tap itself, run
+`brew trust first-it-consulting/tap` first, bearing in mind that it grants more
+than the single command above: trusting a tap means its code may run with your
+user's privileges whenever Homebrew loads it. See
+[Tap Trust](https://docs.brew.sh/Tap-Trust).
 
 Homebrew resolves a tap name by prepending `homebrew-`, so `first-it-consulting/tap`
 means the [`first-it-consulting/homebrew-tap`](https://github.com/first-it-consulting/homebrew-tap)
