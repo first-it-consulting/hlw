@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>hlw installer</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 700px; margin: 60px auto; padding: 0 20px; line-height: 1.6; color: #1a1a1a; }
+    code { background: #f4f4f4; padding: 2px 6px; border-radius: 4px; font-family: ui-monospace, monospace; }
+    pre { background: #f4f4f4; padding: 16px; border-radius: 8px; overflow-x: auto; }
+    h1 { margin-bottom: 8px; }
+    .subtitle { color: #666; margin-top: 0; }
+  </style>
+</head>
+<body>
+  <h1>hlw installer</h1>
+  <p class="subtitle">Harness Launch Wrapper — one-liner install for macOS and Linux.</p>
+  <h2>Install</h2>
+  <pre><code>curl -fsSL https://hlw.first-it-consulting.com/install.sh | bash</code></pre>
+  <h2>Dry run (verify without installing)</h2>
+  <pre><code>curl -fsSL https://hlw.first-it-consulting.com/install.sh | bash --dry-run</code></pre>
+  <h2>Flags</h2>
+  <ul>
+    <li><code>--dry-run</code>: resolve version + platform, download and verify the checksum, but don't install.</li>
+    <li><code>--prefix=DIR</code>: install to a specific directory (default: <code>~/.local/bin</code>). Requires write access.</li>
+    <li><code>--version=VER</code>: pin a specific version (default: latest release tag).</li>
+  </ul>
+  <h2>What it does</h2>
+  <ol>
+    <li>Detects your platform (darwin/linux, arm64/amd64).</li>
+    <li>Fetches the latest release tag from GitHub.</li>
+    <li>Downloads the platform tarball and verifies its SHA-256 against the release's checksums.</li>
+    <li>Copies the binary to your chosen prefix (or a writable temp dir if you lack permissions).</li>
+  </ol>
+</body>
+</html>
