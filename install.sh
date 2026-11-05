@@ -2,9 +2,9 @@
 # hlw installer — installs the latest release binary for this platform.
 #
 # Usage:
-#   curl -fsSL https://hlw.first-it-consulting.ai/install.sh | bash
-#   curl -fsSL https://hlw.first-it-consulting.ai/install.sh | bash --dry-run
-#   curl -fsSL https://hlw.first-it-consulting.ai/install.sh | bash --help
+#   curl -fsSL https://hlw.first-it-consulting.com/install.sh | bash
+#   curl -fsSL https://hlw.first-it-consulting.com/install.sh | bash --dry-run
+#   curl -fsSL https://hlw.first-it-consulting.com/install.sh | bash --help
 #
 # Environment:
 #   HLW_PREFIX    Install prefix. Defaults to ~/.local/bin if unset and that
@@ -20,7 +20,7 @@ show_help() {
 hlw installer — fetch and verify the latest hlw release binary.
 
 Usage:
-  curl -fsSL https://hlw.first-it-consulting.ai/install.sh | bash [OPTIONS]
+  curl -fsSL https://hlw.first-it-consulting.com/install.sh | bash [OPTIONS]
 
 Options (piped to the installer):
   --dry-run        Resolve version + platform, download and verify the asset,
