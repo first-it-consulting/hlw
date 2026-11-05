@@ -39,6 +39,24 @@ and your endpoint.
 
 ## Installation
 
+The quick way — one line, checksum-verified:
+
+```bash
+curl -fsSL https://hlw.first-it-consulting.com/install.sh | bash
+```
+
+Or pin a version:
+
+```bash
+curl -fsSL https://hlw.first-it-consulting.com/install.sh | bash --version=0.1.4
+```
+
+Dry-run to inspect without installing:
+
+```bash
+curl -fsSL https://hlw.first-it-consulting.com/install.sh | bash --dry-run
+```
+
 ### From source
 
 ```bash
