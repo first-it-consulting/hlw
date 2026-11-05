@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.4] - 2026-11-05
+
+Dependency update across the terminal UI stack; `hlw` behaves identically.
+
+### Changed
+
+- Bumped charmbracelet/x (`ansi`, `cellbuf`, `term`), bubbletea, colorprofile and
+  go-osc52 to their latest releases.
+- Bumped mattn/go-isatty and go-runewidth, lucasb-eyer/go-colorful and xo/terminfo.
+- Bumped golang.org/x/{sync,sys,text} to their latest releases.
+
 ## [0.1.3] - 2026-09-14
 
 Documentation only; `hlw` itself is unchanged from 0.1.2.
