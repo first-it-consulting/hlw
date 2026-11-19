@@ -3,7 +3,9 @@ package cmd
 import (
 	"errors"
 	"fmt"
+	"io"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -11,6 +13,7 @@ import (
 	"github.com/first-it-consulting/hlw/internal/config"
 	"github.com/first-it-consulting/hlw/internal/harness"
 	"github.com/first-it-consulting/hlw/internal/models"
+	"github.com/first-it-consulting/hlw/internal/policy"
 	"github.com/spf13/cobra"
 )
 
@@ -49,6 +52,10 @@ Example:
 		fmt.Printf("Using harness: %s\n", harnessName)
 		fmt.Printf("Executable: %s\n\n", h.Executable)
 
+		// Warn before the model picker, so nobody picks a model that a managed
+		// policy is going to throw away.
+		warnManagedPolicy(h)
+
 		// Fetch model list if modelURL is configured
 		modelVars := map[string]string{}
 		if modelListURL := h.ModelListURL(); modelListURL != "" {
@@ -62,8 +69,8 @@ Example:
 			}
 			modelList, err := models.FetchModels(modelListURL, headers)
 			if err != nil {
-				fmt.Printf("Warning: Failed to fetch models: %v\n", err)
-				if h.ModelAuthToken == "" {
+				warnFetchFailed(h, modelListURL, err)
+				if h.ModelAuthToken == "" && !models.Unreachable(err) {
 					fmt.Println("Hint: no modelAuthToken is configured, so the request was")
 					fmt.Println("sent unauthenticated. Set one (e.g. \"{{env:MY_API_KEY}}\") if")
 					fmt.Println("the endpoint needs a token.")
@@ -109,6 +116,18 @@ Example:
 		// Combine harness args, the model args, and user-provided args
 		allArgs := h.CombinedArgs(modelVars, userArgs)
 
+		// Claude Code lets the env block of its own settings files override
+		// the process environment. A --settings file outranks those.
+		cleanup := func() {}
+		if h.EnvViaSettings {
+			path, done, err := writeSettingsFile(h)
+			if err != nil {
+				return err
+			}
+			cleanup = done
+			allArgs = append([]string{"--settings", path}, allArgs...)
+		}
+
 		// Print launch info
 		fmt.Printf("Launching %s %v\n", h.Executable, allArgs)
 		if len(h.EnvVars) > 0 {
@@ -124,6 +143,8 @@ Example:
 		// Launch the harness
 		fmt.Println("Launching...")
 		result, err := harness.Launch(h.Executable, allArgs, env)
+		// The agent has exited, so its settings file is no longer read.
+		cleanup()
 		if err != nil {
 			return fmt.Errorf("launch failed: %w", err)
 		}
@@ -231,4 +252,103 @@ func init() {
 	}
 
 	rootCmd.AddCommand(launchCmd)
+}
+
+// warnManagedPolicy explains, for Claude Code harnesses, which parts of the
+// launch a managed (enterprise) settings file will override. hlw cannot win
+// against those settings, so it says so up front instead of letting the agent
+// quietly connect somewhere else.
+func warnManagedPolicy(h *config.HarnessConfig) {
+	if !policy.IsClaude(h.Executable) {
+		return
+	}
+	l := policy.Launch{
+		Endpoint:     strings.TrimRight(h.Endpoint, "/"),
+		Env:          h.ResolvedEnvVars(),
+		ModelEnvVars: h.ModelEnvVars,
+	}
+	printPolicyConflicts(os.Stdout, policy.Conflicts(policy.FindClaude(), l))
+	// User settings can be beaten, so only mention them when the harness
+	// does not already do that.
+	if !h.EnvViaSettings {
+		printUserSettingsConflicts(os.Stdout, policy.UserSettingsConflicts(l))
+	}
+}
+
+func printUserSettingsConflicts(w io.Writer, conflicts map[string][]string) {
+	if len(conflicts) == 0 {
+		return
+	}
+	fmt.Fprintln(w, "Warning: your Claude Code settings override this launch.")
+	printConflictList(w, conflicts)
+	fmt.Fprintln(w, "  Settings files outrank the environment hlw passes. Set")
+	fmt.Fprintln(w, "  \"envViaSettings\": true on this harness to hand the values over as")
+	fmt.Fprintln(w, "  --settings, which wins over them (or fix the settings file if hlw")
+	fmt.Fprintln(w, "  could not read it).")
+	fmt.Fprintln(w)
+}
+
+func printConflictList(w io.Writer, conflicts map[string][]string) {
+	paths := make([]string, 0, len(conflicts))
+	for p := range conflicts {
+		paths = append(paths, p)
+	}
+	slices.Sort(paths)
+	for _, p := range paths {
+		fmt.Fprintf(w, "  %s\n", p)
+		for _, m := range conflicts[p] {
+			fmt.Fprintf(w, "    - %s\n", m)
+		}
+	}
+}
+
+// writeSettingsFile writes the harness env as a Claude Code settings file and
+// returns its path and a function that removes it. A file, not inline JSON,
+// keeps tokens out of the process list.
+func writeSettingsFile(h *config.HarnessConfig) (string, func(), error) {
+	data, err := h.SettingsJSON()
+	if err != nil {
+		return "", nil, fmt.Errorf("failed to build settings: %w", err)
+	}
+	f, err := os.CreateTemp("", "hlw-settings-*.json") // created 0600
+	if err != nil {
+		return "", nil, fmt.Errorf("failed to create settings file: %w", err)
+	}
+	if _, err := f.Write(data); err != nil {
+		f.Close()
+		os.Remove(f.Name())
+		return "", nil, fmt.Errorf("failed to write settings file: %w", err)
+	}
+	if err := f.Close(); err != nil {
+		os.Remove(f.Name())
+		return "", nil, fmt.Errorf("failed to write settings file: %w", err)
+	}
+	return f.Name(), func() { os.Remove(f.Name()) }, nil
+}
+
+func printPolicyConflicts(w io.Writer, conflicts map[string][]string) {
+	if len(conflicts) == 0 {
+		return
+	}
+	fmt.Fprintln(w, "Warning: a Claude Code managed policy overrides this launch.")
+	printConflictList(w, conflicts)
+	fmt.Fprintln(w, "  Managed settings take precedence over everything hlw passes, including")
+	fmt.Fprintln(w, "  --settings; hlw cannot override them. Ask whoever manages the policy to")
+	fmt.Fprintln(w, "  allow your endpoint, or use a harness it does not cover (codex, opencode, pi).")
+	fmt.Fprintln(w)
+}
+
+// warnFetchFailed tells "nothing is listening" apart from "the endpoint
+// answered with an error", because the first means the agent will fail too.
+func warnFetchFailed(h *config.HarnessConfig, url string, err error) {
+	if models.Unreachable(err) {
+		fmt.Printf("Warning: endpoint not reachable: %s\n", url)
+		fmt.Printf("  %v\n", err)
+		fmt.Println("  Is the local server or gateway running, and is the endpoint in the config right?")
+		if h.Endpoint != "" {
+			fmt.Printf("  The agent is pointed at %s too, so it will most likely fail to connect.\n", h.Endpoint)
+		}
+		return
+	}
+	fmt.Printf("Warning: Failed to fetch models: %v\n", err)
 }

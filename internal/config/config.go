@@ -43,6 +43,13 @@ type HarnessConfig struct {
 	ModelAuthToken string `json:"modelAuthToken,omitempty"`
 
 	Description string `json:"description,omitempty"`
+
+	// EnvViaSettings also hands the resolved envVars (including the selected
+	// model) to Claude Code as a --settings file. Settings passed that way
+	// outrank the env block of ~/.claude/settings.json and project settings,
+	// which otherwise override the environment hlw exports. Only Claude Code
+	// understands --settings.
+	EnvViaSettings bool `json:"envViaSettings,omitempty"`
 }
 
 // Placeholder names usable inside ModelArgs, written as {{name}}.
@@ -132,6 +139,9 @@ func ValidateConfig(config *RootConfig) error {
 func validateHarness(name string, harness *HarnessConfig) error {
 	if harness.Executable == "" {
 		return fmt.Errorf("harness %q: executable is required", name)
+	}
+	if harness.EnvViaSettings && filepath.Base(harness.Executable) != "claude" {
+		return fmt.Errorf("harness %q: envViaSettings only works with Claude Code (executable \"claude\")", name)
 	}
 	// Model wiring is only reachable when there is a model list to pick from.
 	if harness.ModelListURL() == "" {
@@ -380,4 +390,10 @@ func ConfigPath() string {
 		return DefaultConfigFile
 	}
 	return filepath.Join(home, DefaultConfigDir, DefaultConfigFile)
+}
+
+// SettingsJSON returns the Claude Code settings document carrying the
+// resolved envVars, for passing with --settings.
+func (h *HarnessConfig) SettingsJSON() ([]byte, error) {
+	return json.MarshalIndent(map[string]any{"env": h.ResolvedEnvVars()}, "", "  ")
 }

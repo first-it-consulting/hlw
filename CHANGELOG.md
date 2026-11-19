@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Warning before launching Claude Code when a managed (enterprise) settings file
+  overrides the launch — a forced provider such as Bedrock, pinned model
+  variables, other env overrides, or an `allowedProviders` restriction.
+- Clear warning when the configured endpoint is not reachable at all, separate
+  from an endpoint that answers with an error.
+- `envViaSettings` harness option (Claude Code only): passes `envVars` and the
+  selected model as a temporary `--settings` file, so they win over the `env`
+  block of `~/.claude/settings.json` and project settings.
+- The managed-policy check understands `allowedProviders: ["customEndpoint"]`
+  and its requirement that `ANTHROPIC_BASE_URL` be pinned in managed `env`, and
+  reports a missing or different pin. Without `envViaSettings`, `hlw` also
+  warns when your user settings override the launch.
+
+### Changed
+
+- `hlw` stays running until the agent exits even on SIGTERM or SIGHUP, and
+  forwards those signals to the agent.
+
 ## [0.1.4] - 2026-11-05
 
 Dependency update across the terminal UI stack; `hlw` behaves identically.

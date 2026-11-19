@@ -2,9 +2,12 @@ package models
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	neturl "net/url"
+	"strings"
 	"time"
 )
 
@@ -59,6 +62,35 @@ type OllamaModel struct {
 // DefaultFetchTimeout is how long a launch waits for the model list.
 const DefaultFetchTimeout = 10 * time.Second
 
+// StatusError is returned when the endpoint answered, but not with 200.
+type StatusError struct {
+	URL  string
+	Code int
+	Body string
+}
+
+func (e *StatusError) Error() string {
+	if e.Body == "" {
+		return fmt.Sprintf("unexpected status code %d from %s", e.Code, e.URL)
+	}
+	return fmt.Sprintf("unexpected status code %d from %s: %s", e.Code, e.URL, e.Body)
+}
+
+// Unreachable reports whether err means nothing answered at all — connection
+// refused, DNS failure, timeout — as opposed to an endpoint that answered with
+// an error or with something hlw could not parse.
+func Unreachable(err error) bool {
+	if err == nil {
+		return false
+	}
+	var se *StatusError
+	if errors.As(err, &se) {
+		return false
+	}
+	var ue *neturl.Error
+	return errors.As(err, &ue)
+}
+
 // FetchModels retrieves the list of available models from the given URL.
 func FetchModels(url string, headers map[string]string) (*ModelList, error) {
 	return FetchModelsTimeout(url, headers, DefaultFetchTimeout)
@@ -88,8 +120,8 @@ func FetchModelsTimeout(url string, headers map[string]string, timeout time.Dura
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("unexpected status code %d: %s", resp.StatusCode, string(body))
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
+		return nil, &StatusError{URL: url, Code: resp.StatusCode, Body: strings.TrimSpace(string(body))}
 	}
 
 	body, err := io.ReadAll(resp.Body)
