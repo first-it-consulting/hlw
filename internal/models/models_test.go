@@ -2,6 +2,7 @@ package models
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -78,5 +79,33 @@ func TestFind(t *testing.T) {
 	}
 	if _, ok := Find(nil, "a"); ok {
 		t.Error("Find on an empty list should not match")
+	}
+}
+
+func TestUnreachable(t *testing.T) {
+	// Grab a free port, then close it so nothing listens there.
+	server := httptest.NewServer(http.NotFoundHandler())
+	closedURL := server.URL
+	server.Close()
+	_, err := FetchModels(closedURL+"/v1/models", nil)
+	if !Unreachable(err) {
+		t.Errorf("connection refused should be unreachable, got %v", err)
+	}
+
+	server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "nope", http.StatusUnauthorized)
+	}))
+	defer server.Close()
+	_, err = FetchModels(server.URL, nil)
+	if Unreachable(err) {
+		t.Errorf("401 means the endpoint answered, got unreachable for %v", err)
+	}
+	var se *StatusError
+	if !errors.As(err, &se) || se.Code != http.StatusUnauthorized {
+		t.Errorf("expected StatusError 401, got %v", err)
+	}
+
+	if Unreachable(nil) {
+		t.Error("nil error is not unreachable")
 	}
 }

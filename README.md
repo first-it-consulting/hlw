@@ -274,6 +274,7 @@ validation is in [`config.schema.json`](config.schema.json).
 | `modelArgs` | array | No | Args appended after `args`, with placeholders substituted |
 | `modelAuthToken` | string | No | Bearer token for the model-list request; supports `{{env:NAME}}`. Omitted means unauthenticated |
 | `description` | string | No | Optional description of the harness |
+| `envViaSettings` | bool | No | Claude Code only: also pass `envVars` and the selected model as a `--settings` file, so they win over `~/.claude/settings.json` and project settings |
 
 ### Model list formats
 
@@ -694,6 +695,67 @@ warning itself requires codex's `model_catalog_json`, whose schema is large,
 nested, undocumented, and includes the agent's entire system prompt — pinning it
 is more likely to cause drift than to help.
 
+**Claude Code settings files beat the environment.** The `env` block of
+`~/.claude/settings.json` (and of project settings) overrides environment
+variables, so a `CLAUDE_CODE_USE_BEDROCK=1` or `ANTHROPIC_DEFAULT_*_MODEL`
+there wins over what `hlw` exports. Set `"envViaSettings": true` on the harness:
+`hlw` then also writes the resolved `envVars` and the selected model to a
+temporary settings file (mode 0600, removed when the agent exits) and passes it
+with `--settings`, which outranks user and project settings. Without it, `hlw`
+warns when your user settings override the launch.
+
+```json
+"claude-local": {
+  "executable": "claude",
+  "endpoint": "http://127.0.0.1:4000",
+  "envViaSettings": true,
+  "modelEnvVars": ["ANTHROPIC_MODEL", "ANTHROPIC_DEFAULT_OPUS_MODEL", "ANTHROPIC_DEFAULT_SONNET_MODEL", "ANTHROPIC_DEFAULT_HAIKU_MODEL"],
+  "envVars": {
+    "ANTHROPIC_BASE_URL": "{{endpoint}}",
+    "ANTHROPIC_AUTH_TOKEN": "{{env:LITELLM_API_KEY}}",
+    "CLAUDE_CODE_USE_BEDROCK": "0"
+  }
+}
+```
+
+**Claude Code under a company (managed) policy.** Organisations can deploy a
+managed settings file: on macOS
+`/Library/Application Support/ClaudeCode/managed-settings.json`, on Linux
+`/etc/claude-code/managed-settings.json`, plus drop-ins in `managed-settings.d/`
+that are merged on top in name order. Managed settings outrank everything,
+`--settings` included. `hlw` checks them before launching a `claude` harness
+and prints what will be overridden:
+
+```
+Warning: a Claude Code managed policy overrides this launch.
+  /Library/Application Support/ClaudeCode/managed-settings.json
+    - sets ANTHROPIC_DEFAULT_SONNET_MODEL=eu.anthropic.claude-sonnet-5-5: the model you pick is ignored
+    - sets CLAUDE_CODE_USE_BEDROCK=1: Claude Code will use Amazon Bedrock, not http://127.0.0.1:4000
+    - allowedProviders = [bedrock] does not include "customEndpoint": Claude Code refuses ANTHROPIC_BASE_URL=http://127.0.0.1:4000
+```
+
+`hlw` does not try to work around a managed policy. For whoever maintains it,
+a policy that keeps Bedrock as the default but admits one local or gateway
+endpoint needs:
+
+- `"allowedProviders": ["bedrock", "customEndpoint"]`.
+- `ANTHROPIC_BASE_URL` **pinned** in the managed `env`: with `customEndpoint`,
+  Claude Code accepts only the URL the managed settings pin. Point the
+  harness's `endpoint` at exactly that URL.
+- No `CLAUDE_CODE_USE_BEDROCK` and no model variables (`ANTHROPIC_MODEL`,
+  `ANTHROPIC_SMALL_FAST_MODEL`, `ANTHROPIC_DEFAULT_*_MODEL`) in the managed
+  `env`. Put them in each user's `~/.claude/settings.json` instead, so plain
+  `claude` stays on Bedrock and an `envViaSettings` harness can override them.
+
+Settings outside `env`, such as `awsAuthRefresh`, `otelHeadersHelper` or
+`statusLine`, can stay in the managed file. Policies delivered through MDM
+configuration profiles are not detected.
+
+**Unreachable endpoint.** If nothing answers at the endpoint (server not
+started, gateway down, wrong port), `hlw` says so explicitly rather than just
+reporting a failed model fetch, because the agent pointed at the same endpoint
+will fail as well.
+
 ## What hlw does not do
 
 - It does not write agent configuration files. Provider definitions live in each
@@ -749,10 +811,11 @@ hlw/
 ├── internal/
 │   ├── config/         # Config loading, validation, model wiring
 │   ├── harness/        # Subprocess launch logic
-│   └── models/
-│       ├── models.go   # Model list fetching
-│       ├── select.go   # Selection entry point + non-TTY fallback
-│       └── picker.go   # Interactive scrolling picker
+│   ├── models/
+│   │   ├── models.go   # Model list fetching
+│   │   ├── select.go   # Selection entry point + non-TTY fallback
+│   │   └── picker.go   # Interactive scrolling picker
+│   └── policy/         # Claude Code managed-policy detection
 ├── Formula/            # Homebrew formula template, rendered to the tap
 ├── CHANGELOG.md        # Release notes, per version
 ├── config.example.json # Example configuration

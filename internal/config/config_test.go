@@ -1,6 +1,7 @@
 package config
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"slices"
@@ -504,5 +505,50 @@ func TestValidateConfig_AcceptsEnvPlaceholder(t *testing.T) {
 	}}}
 	if err := ValidateConfig(cfg); err != nil {
 		t.Errorf("expected {{env:NAME}} to validate, got: %v", err)
+	}
+}
+
+func TestEnvViaSettingsOnlyForClaude(t *testing.T) {
+	cfg := &RootConfig{Harnesses: map[string]HarnessConfig{
+		"codex": {Executable: "codex", EnvViaSettings: true},
+	}}
+	if err := ValidateConfig(cfg); err == nil {
+		t.Fatal("expected envViaSettings on a non-claude harness to be rejected")
+	}
+	cfg.Harnesses = map[string]HarnessConfig{
+		"claude": {Executable: "/opt/bin/claude", EnvViaSettings: true},
+	}
+	if err := ValidateConfig(cfg); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestSettingsJSONCarriesResolvedEnvAndModel(t *testing.T) {
+	h := HarnessConfig{
+		Executable:   "claude",
+		Endpoint:     "http://127.0.0.1:4000/",
+		EnvVars:      map[string]string{"ANTHROPIC_BASE_URL": "{{endpoint}}", "CLAUDE_CODE_USE_BEDROCK": "0"},
+		ModelEnvVars: []string{"ANTHROPIC_DEFAULT_SONNET_MODEL"},
+	}
+	h.ApplyModel("qwen3-coder")
+	data, err := h.SettingsJSON()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got struct {
+		Env map[string]string `json:"env"`
+	}
+	if err := json.Unmarshal(data, &got); err != nil {
+		t.Fatal(err)
+	}
+	want := map[string]string{
+		"ANTHROPIC_BASE_URL":             "http://127.0.0.1:4000",
+		"CLAUDE_CODE_USE_BEDROCK":        "0",
+		"ANTHROPIC_DEFAULT_SONNET_MODEL": "qwen3-coder",
+	}
+	for k, v := range want {
+		if got.Env[k] != v {
+			t.Errorf("env[%s] = %q, want %q", k, got.Env[k], v)
+		}
 	}
 }

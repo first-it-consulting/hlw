@@ -2,7 +2,9 @@ package harness
 
 import (
 	"os"
+	"syscall"
 	"testing"
+	"time"
 )
 
 func TestLaunch_Success(t *testing.T) {
@@ -66,5 +68,25 @@ func TestDisplayValue(t *testing.T) {
 				t.Errorf("DisplayValue(%q) = %q, want %q", tc.name, got, tc.want)
 			}
 		})
+	}
+}
+
+// A SIGTERM aimed at hlw must reach the agent and must not kill hlw before
+// the agent has exited, or cleanup after the launch never runs.
+func TestLaunch_ForwardsSIGTERMAndOutlivesChild(t *testing.T) {
+	go func() {
+		time.Sleep(300 * time.Millisecond)
+		syscall.Kill(os.Getpid(), syscall.SIGTERM)
+	}()
+	start := time.Now()
+	result, err := Launch("sleep", []string{"10"}, os.Environ())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if time.Since(start) > 5*time.Second {
+		t.Fatal("child was not terminated by the forwarded SIGTERM")
+	}
+	if result.ExitCode == 0 {
+		t.Errorf("expected a non-zero exit for a terminated child, got 0")
 	}
 }

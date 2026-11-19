@@ -71,6 +71,11 @@
           },
           "description": "Arguments appended after args. {{model}} is replaced by the selected model id and {{contextWindow}} by its context window in tokens when the endpoint reports one. An argument whose placeholder has no value is dropped whole, so write flag and value as a single token (--config=key={{contextWindow}})."
         },
+        "envViaSettings": {
+          "type": "boolean",
+          "description": "Claude Code only. Also pass the resolved envVars and the selected model to the agent as a --settings file, so they win over the env block in ~/.claude/settings.json and project settings. Managed (enterprise) settings still take precedence.",
+          "default": false
+        },
         "modelAuthToken": {
           "type": "string",
           "description": "Bearer token sent when fetching the model list. Supports {{env:NAME}} so the secret can live in the environment rather than this file. Omitted means the request is sent unauthenticated - there is no implicit token lookup."

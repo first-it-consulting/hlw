@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"os/signal"
 	"regexp"
+	"syscall"
 )
 
 // LaunchResult contains information about the launched process.
@@ -21,9 +23,33 @@ func Launch(command string, args []string, env []string) (*LaunchResult, error) 
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
+	// Stay alive until the agent exits, so the caller can clean up after it.
+	// Ctrl-C reaches the agent straight from the terminal, so hlw only has to
+	// survive it; termination signals sent to hlw alone are passed on. A
+	// handler, unlike signal.Ignore, is reset on exec, so the agent still
+	// sees its own signals normally.
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, os.Interrupt, syscall.SIGTERM, syscall.SIGHUP)
+	defer signal.Stop(sigs)
+
 	if err := cmd.Start(); err != nil {
 		return nil, fmt.Errorf("failed to start process: %w", err)
 	}
+
+	done := make(chan struct{})
+	defer close(done)
+	go func() {
+		for {
+			select {
+			case sig := <-sigs:
+				if sig != os.Interrupt {
+					_ = cmd.Process.Signal(sig)
+				}
+			case <-done:
+				return
+			}
+		}
+	}()
 
 	// Wait for the process to complete
 	if err := cmd.Wait(); err != nil {

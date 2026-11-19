@@ -1,10 +1,15 @@
 package cmd
 
 import (
+	"bytes"
+	"encoding/json"
 	"errors"
+	"os"
 	"slices"
+	"strings"
 	"testing"
 
+	"github.com/first-it-consulting/hlw/internal/config"
 	"github.com/first-it-consulting/hlw/internal/models"
 	"github.com/spf13/pflag"
 )
@@ -89,5 +94,47 @@ func TestTakeModelArg(t *testing.T) {
 				t.Errorf("rest = %v, want %v", rest, tc.wantRest)
 			}
 		})
+	}
+}
+
+func TestPrintPolicyConflicts(t *testing.T) {
+	var buf bytes.Buffer
+	printPolicyConflicts(&buf, nil)
+	if buf.Len() != 0 {
+		t.Fatalf("no conflicts should print nothing, got %q", buf.String())
+	}
+	printPolicyConflicts(&buf, map[string][]string{"/b.json": {"two"}, "/a.json": {"one"}})
+	out := buf.String()
+	if !strings.Contains(out, "managed policy overrides") || strings.Index(out, "/a.json") > strings.Index(out, "/b.json") {
+		t.Errorf("unexpected output:\n%s", out)
+	}
+}
+
+func TestWriteSettingsFile(t *testing.T) {
+	h := &config.HarnessConfig{
+		Executable: "claude",
+		EnvVars:    map[string]string{"CLAUDE_CODE_USE_BEDROCK": "0", "ANTHROPIC_AUTH_TOKEN": "secret"},
+	}
+	path, cleanup, err := writeSettingsFile(h)
+	if err != nil {
+		t.Fatal(err)
+	}
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if perm := info.Mode().Perm(); perm != 0o600 {
+		t.Errorf("settings file holds tokens; perm = %o, want 600", perm)
+	}
+	data, _ := os.ReadFile(path)
+	var got struct {
+		Env map[string]string `json:"env"`
+	}
+	if err := json.Unmarshal(data, &got); err != nil || got.Env["CLAUDE_CODE_USE_BEDROCK"] != "0" {
+		t.Errorf("unexpected settings content %s (%v)", data, err)
+	}
+	cleanup()
+	if _, err := os.Stat(path); !os.IsNotExist(err) {
+		t.Errorf("cleanup did not remove %s", path)
 	}
 }
