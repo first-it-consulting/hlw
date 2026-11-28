@@ -3,7 +3,7 @@ module github.com/first-it-consulting/hlw
 go 1.27.0
 
 require (
-	github.com/charmbracelet/bubbletea v1.3.10
+	github.com/charmbracelet/bubbletea/v2 v2.2.0
 	github.com/charmbracelet/lipgloss v1.1.0
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.1.0
